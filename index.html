@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Thoth: кликабельный прототип</title>
+<style>
+/* Layout: phone frame in the middle, screen map panel on the left (desktop only) */
+:root{
+  --bg:#e9ecea; --surface:#fff; --ink:#1b2321; --muted:#66726e; --line:#dde2df; --soft:#f3f5f4;
+  --accent:#0f6b5c; --accent-ink:#fff; --accent-soft:#dcefea;
+  --again:#c4423a; --hard:#c9772b; --good:#0f6b5c; --easy:#2f6bb3;
+  --new:#d9769f; --learn:#8a5cc7; --master:#4a7fb8;
+  --new-bg:#f4e2eb; --new-ink:#b04677; --learn-bg:#ece3f6; --learn-ink:#6d3fb0; --done-bg:#e3eef8; --done-ink:#2f629b; --page:#f5f6f7;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.4}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+.stage{min-height:100%;display:flex;gap:24px;justify-content:center;align-items:center;padding:16px}
+.side{width:250px;align-self:center;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;max-height:calc(100vh - 32px);overflow:auto}
+.side h2{font-size:14px;margin:0 0 4px}
+.side p{font-size:12px;color:var(--muted);margin:0 0 10px}
+.side button.j{display:flex;gap:8px;width:100%;text-align:left;border:0;background:none;padding:6px 6px;border-radius:6px;font-size:13px}
+.side button.j:hover{background:var(--soft)}
+.side button.j i{font-style:normal;font-family:ui-monospace,monospace;font-size:11px;background:var(--accent-soft);color:var(--accent);border-radius:4px;padding:0 5px;min-width:22px;text-align:center}
+.side .grp{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:10px 6px 2px}
+.side .reset{margin-top:12px;border:1px solid var(--line);background:none;border-radius:8px;padding:6px 10px;font-size:12px;width:100%}
+.phone{position:relative;width:390px;height:min(844px,calc(100vh - 32px));background:var(--page);border-radius:28px;box-shadow:0 0 0 8px #1b2321,0 20px 50px rgba(0,0,0,.25);overflow:hidden;display:flex;flex-direction:column}
+.mapbtn{display:none}
+@media (max-width:1000px){.side{display:none}.mapbtn{display:block;position:fixed;top:6px;right:6px;z-index:50;border:1px solid var(--line);background:rgba(255,255,255,.9);border-radius:999px;padding:3px 10px;font-size:12px}}
+@media (max-width:520px){.stage{padding:0}.phone{width:100%;height:100vh;height:100dvh;border-radius:0;box-shadow:none}}
+.top{display:flex;align-items:center;gap:6px;padding:12px 12px 8px;min-height:56px}
+.top h1{font-size:20px;margin:0;flex:1;padding-left:6px}
+.top .ttl{flex:1;font-weight:600;text-align:center;font-size:16px}
+.ib{width:44px;height:44px;border:0;background:none;border-radius:50%;display:grid;place-items:center;color:var(--ink);flex:none}
+.ib:hover{background:var(--soft)}
+.ib svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ib[disabled]{opacity:.3;cursor:default}
+.body{touch-action:pan-y;flex:1;overflow:auto;padding:4px 16px 20px;display:flex;flex-direction:column;gap:12px}
+.foot{padding:10px 16px 14px;border-top:1px solid var(--line);background:var(--surface)}
+.tabbar{display:flex;border-top:1px solid var(--line);background:var(--surface);padding-bottom:6px}
+.tabbar button{flex:1;border:0;background:none;padding:8px 0 4px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted);min-height:54px}
+.tabbar button.on{color:var(--accent);font-weight:600}
+.tabbar svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
+.card.big{background:var(--accent);color:var(--accent-ink);border:0;padding:18px}
+.nums{display:flex;gap:20px;margin:6px 0 14px}
+.nums b{font-size:30px;display:block;line-height:1}
+.nums span{font-size:12px;opacity:.85}
+.btn{border:0;border-radius:12px;padding:0 16px;min-height:48px;font-weight:600;width:100%}
+.btn.pri{background:var(--accent);color:var(--accent-ink)}
+.btn.inv{background:#fff;color:var(--accent)}
+.btn.sec{background:var(--soft);border:1px solid var(--line)}
+.btn.dng{background:var(--again);color:#fff}
+.btn[disabled]{opacity:.45;cursor:default}
+.row2{display:flex;gap:8px}
+.row2 .btn{min-height:44px;font-weight:500}
+.ghost .btn.sec{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.35);color:#fff}
+.list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.li{display:flex;align-items:center;gap:10px;padding:12px 14px;border:0;border-top:1px solid var(--line);background:none;text-align:left;width:100%;min-height:56px}
+.li:first-child{border-top:0}
+.li:hover{background:var(--soft)}
+.li .grow{flex:1;min-width:0}
+.li .t{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .s{font-size:12.5px;color:var(--muted)}
+.chev{color:var(--muted);font-size:18px}
+.pill{font-size:12px;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:2px 9px;font-weight:600;white-space:nowrap}
+.pill.warn{background:#fbe6e3;color:var(--again)}
+.h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:6px 2px -4px}
+.banner{background:#fff4e0;border:1px solid #f0d49a;border-radius:12px;padding:12px;display:flex;gap:10px;align-items:center;text-align:left;width:100%}
+.banner b{display:block}
+.input,.sel,.ta{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:var(--surface);min-height:44px}
+.ta{min-height:130px;font-family:ui-monospace,monospace;font-size:13px;resize:vertical}
+.input:focus,.sel:focus,.ta:focus{outline:2px solid var(--accent);outline-offset:-1px}
+label.f{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.bar{display:flex;height:10px;border-radius:6px;overflow:hidden;background:var(--soft)}
+.bar i{display:block;height:100%}
+.leg{display:flex;gap:14px;font-size:12.5px;margin-top:8px;flex-wrap:wrap}
+.leg span:before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;background:var(--c)}
+.empty{text-align:center;padding:30px 10px;color:var(--muted)}
+.empty h3{color:var(--ink);margin:0 0 6px;font-size:17px}
+.empty .btn{margin-top:8px}
+.fc{flex:1;display:flex;align-items:center;justify-content:center;padding:8px 16px}
+.fcard{width:100%;min-height:300px;border:1px solid var(--line);border-radius:20px;background:var(--surface);box-shadow:0 6px 20px rgba(0,0,0,.06);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;gap:10px;cursor:pointer}
+.fcard .w{font-size:30px;font-weight:650}
+.fcard .tr{font-size:22px;color:var(--accent);font-weight:600}
+.fcard .ex{font-size:14px;color:var(--muted);font-style:italic}
+.fcard .hint{font-size:12px;color:var(--muted)}
+.rate{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.rate button{border:0;border-radius:12px;min-height:52px;color:#fff;font-weight:600;font-size:13px}
+.prog{height:4px;background:var(--soft)}
+.prog i{display:block;height:100%;background:var(--accent)}
+.opt{display:block;width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:14px;min-height:52px;margin-bottom:8px}
+.opt:hover{background:var(--soft)}
+.opt.ok{background:#dff3e8;border-color:#2f9e6f}
+.opt.bad{background:#fbe6e3;border-color:var(--again)}
+.q{font-size:26px;font-weight:650;margin:10px 0 4px}
+.qs{font-size:13px;color:var(--muted)}
+.fb{padding:10px 12px;border-radius:10px;font-size:14px}
+.fb.ok{background:#dff3e8}.fb.bad{background:#fbe6e3}
+.big-pct{font-size:56px;font-weight:700;color:var(--accent);line-height:1}
+.chart{display:flex;align-items:flex-end;gap:8px;height:110px;margin-top:10px}
+.chart div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font-size:11px;color:var(--muted);gap:4px}
+.chart i{width:100%;background:var(--accent);border-radius:5px 5px 0 0;min-height:3px;display:block}
+.chart div.today i{background:#e0a030}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.kpi b{font-size:22px;display:block}.kpi span{font-size:12px;color:var(--muted)}
+.erow{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+.erow .input{padding:9px 10px;min-height:42px}
+.erow .ib{width:36px;height:36px}
+.ex-t{border:0;background:none;color:var(--accent);font-size:12.5px;padding:2px 0}
+.rowc{border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px;display:flex;flex-direction:column;gap:6px}
+.scrim{position:absolute;inset:0;background:rgba(10,20,18,.45);display:flex;align-items:flex-end;z-index:20}
+.scrim.mid{align-items:center;padding:24px}
+.sheet{background:var(--surface);width:100%;border-radius:20px 20px 0 0;padding:14px 16px 18px;max-height:85%;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.dlg{background:var(--surface);width:100%;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.dlg h3,.sheet h3{margin:0;font-size:17px}
+.dlg p{margin:0;color:var(--muted)}
+.sheet .grab{width:36px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 4px}
+.toast{position:absolute;left:16px;right:16px;bottom:84px;background:#1b2321;color:#fff;border-radius:12px;padding:12px 14px;font-size:14px;z-index:40;box-shadow:0 8px 20px rgba(0,0,0,.3)}
+.note{font-size:12px;color:var(--muted)}
+.mis{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.mis:first-child{border-top:0}
+.sw{display:flex;align-items:center;gap:10px}
+
+.streak{display:flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:0 12px;height:36px;font-weight:600;font-size:14px}
+.streak svg{width:16px;height:16px;fill:#e0762b;stroke:none}
+.swr{position:relative;overflow:hidden;touch-action:pan-y}
+.swr .swfg{position:relative;background:var(--surface);transition:transform .18s}
+.swr.drag .swfg{transition:none}
+.swbg{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 18px;color:#fff;font-weight:600;font-size:14px}
+.swr[data-dir="r"] .swbg{background:var(--again)}
+.swr[data-dir="l"] .swbg{background:#59656a}
+.swr[data-dir="r"] .swbg .r,.swr[data-dir="l"] .swbg .l{visibility:hidden}
+.list>.swr+.swr{border-top:1px solid var(--line)}
+.swr .li{border-top:0}
+.swr.tc{border-radius:16px;border:1px solid var(--line);margin-bottom:10px}
+.dtitle{font-size:26px;font-weight:800;letter-spacing:.01em;text-transform:uppercase;line-height:1.15;word-break:break-word}
+.pv{position:relative;min-height:220px;background:var(--surface);border-radius:22px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;padding:36px 24px 24px;text-align:center;font-size:24px;font-weight:600;cursor:pointer;touch-action:pan-y}
+.pv small{display:block;font-size:13px;font-weight:400;color:var(--muted);margin-top:8px;font-style:italic}
+.pv .ic{position:absolute;top:10px;right:10px;display:flex;gap:2px}
+.dots{display:flex;justify-content:center;align-items:center;gap:7px;margin:2px 0 4px}
+.dots i{display:block;width:8px;height:8px;border-radius:50%;background:#cfd5d2}
+.dots i.on{background:var(--ink)}.dots i.s{width:5px;height:5px}
+.pcard{background:var(--surface);border-radius:22px;border:1px solid var(--line);padding:16px}
+.phd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.phd b{font-size:19px}
+.chip-pct{background:var(--learn-bg);color:var(--learn-ink);border-radius:999px;padding:4px 14px;font-weight:600;font-size:14px}
+.prow{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.pillr{display:flex;align-items:center;gap:10px;border-radius:999px;padding:9px 14px;background:var(--bg0);color:var(--ink0);font-weight:600;min-width:128px}
+.pillr svg{width:26px;height:26px;flex:none}
+.prow b{font-weight:500}
+.prow .pc{color:var(--muted);font-size:12.5px;margin-left:auto}
+.tag{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 12px 4px 6px;font-size:13px;font-weight:600;background:var(--bg0);color:var(--ink0)}
+.tag svg{width:20px;height:20px}
+.tag.n{--bg0:var(--new-bg);--ink0:var(--new-ink)}.tag.l{--bg0:var(--learn-bg);--ink0:var(--learn-ink)}.tag.m{--bg0:var(--done-bg);--ink0:var(--done-ink)}
+.pillr.n{--bg0:var(--new-bg);--ink0:var(--new-ink)}.pillr.l{--bg0:var(--learn-bg);--ink0:var(--learn-ink)}.pillr.m{--bg0:var(--done-bg);--ink0:var(--done-ink)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;touch-action:pan-x}
+.chips button{flex:none;border:0;background:var(--surface);border-radius:999px;padding:0 16px;min-height:40px;font-weight:500;white-space:nowrap}
+.chips button.on{background:#111;color:#fff}
+.tc .th{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.tc .nn{width:26px;height:26px;border-radius:50%;background:var(--soft);display:grid;place-items:center;font-size:12px}
+.tc .sp{margin-left:auto;display:flex}
+.tc .tw{font-weight:600;font-size:16px;padding-bottom:12px;border-bottom:2px solid var(--soft)}
+.tc .tt{padding-top:12px;font-size:16px}
+.tc .te{font-size:13px;color:var(--muted);margin-top:6px}
+.body>*{flex-shrink:0}
+.foot.stk{background:linear-gradient(transparent,var(--page) 30%);border-top:0}
+.btn.teal{background:#76cfc2;color:#14463f}
+.hintline{text-align:center;font-size:12px;color:var(--muted);margin-bottom:8px}
+.stat-deck{cursor:pointer;text-align:left;width:100%}
+</style>
+</head>
+<body>
+<button class="mapbtn" data-a="mapopen">Карта экранов</button>
+<div class="stage">
+  <aside class="side" id="side"></aside>
+  <div class="phone" id="app"></div>
+</div>
+<script>
+"use strict";
+/* ---------- icons ---------- */
+const I={
+ back:'<svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>',
+ x:'<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+ plus:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+ gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>',
+ pen:'<svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>',
+ dots:'<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg>',
+ undo:'<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg>',
+ check:'<svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>',
+ trash:'<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+ today:'<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>',
+ lib:'<svg viewBox="0 0 24 24"><path d="M5 4h4v16H5zM11 4h4v16h-4zM17.5 5l3 .8-3.5 14-3-.8z"/></svg>',
+ stat:'<svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>'
+};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=(s,r=document)=>r.querySelector(s);
+let uid=1000;const nid=p=>p+(uid++);
+
+/* ---------- data ---------- */
+const W=[
+ ["ubiquitous","повсеместный","Smartphones have become ubiquitous in modern life.","Часто в формальном тексте"],
+ ["ephemeral","недолговечный","Fame can be ephemeral.",""],
+ ["meticulous","дотошный, скрупулёзный","She is meticulous about her notes.",""],
+ ["resilient","устойчивый, стойкий","Children are often more resilient than adults expect.",""],
+ ["scrutinize","тщательно изучать","Auditors scrutinize every invoice.",""],
+ ["pragmatic","прагматичный","We need a pragmatic solution, not a perfect one.",""],
+ ["ambiguous","двусмысленный","The contract wording is ambiguous.",""],
+ ["inevitable","неизбежный","Change is inevitable.",""],
+ ["alleviate","облегчать (боль)","This medicine will alleviate the pain.",""],
+ ["compelling","убедительный, захватывающий","He made a compelling argument.",""],
+ ["mitigate","смягчать, уменьшать","Trees mitigate the effects of heat.",""],
+ ["tenacious","упорный, цепкий","A tenacious negotiator never gives up.",""]];
+const P=[
+ ["bring up","поднять (тему)","She brought up the budget at the meeting.",""],
+ ["come across","наткнуться на","I came across an old photo.",""],
+ ["put off","откладывать","Don't put off the call.",""],
+ ["carry out","выполнять","They carried out the survey in May.",""],
+ ["figure out","разобраться","I can't figure out this bug.",""],
+ ["back up","сделать резервную копию","Back up your files weekly.",""],
+ ["run into","случайно встретить","I ran into my old teacher.",""],
+ ["turn down","отклонить","She turned down the offer.",""]];
+const B=[
+ ["leverage","рычаг, использовать","",""],["stakeholder","заинтересованная сторона","",""],
+ ["deadline","крайний срок","The deadline is Friday.",""],["revenue","выручка","",""],
+ ["onboarding","введение в должность","",""],["bottleneck","узкое место","",""]];
+function mk(list,stat){return list.map((r,i)=>({id:nid('c'),w:r[0],t:r[1],ex:r[2],ctx:r[3],status:stat[i]||'new',due:(stat[i]||'new')==='new'||stat[i]==='learning'&&i%2===0}))}
+function initial(){
+ return {
+  decks:[
+   {id:'d1',name:'Advanced words',lang:'Английский',newPerDay:5,newToday:0,retention:0.9,direction:'forward',cards:mk(W,['mastered','mastered','mastered','learning','learning','learning','learning'])},
+   {id:'d2',name:'Phrasal verbs',lang:'Английский',newPerDay:5,newToday:0,retention:0.9,direction:'forward',cards:mk(P,['mastered','mastered','learning','learning','learning'])},
+   {id:'d3',name:'Business English',lang:'Английский',newPerDay:5,newToday:0,retention:0.9,direction:'forward',cards:mk(B,[])}],
+  drafts:[{id:'dr1',name:'Idioms',rows:[{w:'break the ice',t:'разрядить обстановку',ex:'',ctx:''},{w:'',t:'',ex:'',ctx:''}]}],
+  trash:[
+   {id:'t1',type:'deck',days:27,deck:{id:'d9',name:'Old idioms',lang:'Английский',newPerDay:5,newToday:0,retention:0.9,direction:'forward',cards:mk([["hit the sack","пойти спать","",""],["spill the beans","проболтаться","",""]],[])}},
+   {id:'t2',type:'card',days:4,deckId:'d1',card:{id:nid('c'),w:'fleeting',t:'мимолётный',ex:'',ctx:'',status:'new',due:true}}],
+  week:[18,32,0,27,41,22,0], streak:4, total30:412, correct30:354, minutes30:200,
+  lastBackup:9, restored:false
+ };
+}
+let S=initial();
+
+/* ---------- navigation ---------- */
+let stack=[{n:'today',p:{}}];
+let dv={i:0,flip:false,f:'all'}, modal=null, toastT=null, toastMsg='', ed=null, sess=null, imp={text:'',sep:'auto',mode:'new',name:'',target:''}, q={lib:'',deck:''}, focusId=null;
+const ROOTS=['today','library','stats'];
+const cur=()=>stack[stack.length-1];
+let fwd=[];
+const go=(n,p={})=>{fwd=[];stack.push({n,p});render()};
+const root=n=>{fwd=[];stack=[{n,p:{}}];render()};
+const back=()=>{if(stack.length>1)fwd.push(stack.pop());else stack=[{n:'today',p:{}}];render()};
+const toast=m=>{toastMsg=m;clearTimeout(toastT);toastT=setTimeout(()=>{toastMsg='';render()},2600);render()};
+const deckById=id=>S.decks.find(d=>d.id===id);
+const plural=(n,a,b,c)=>{const m=n%100,k=n%10;return (m>10&&m<20)?c:k===1?a:(k>=2&&k<=4)?b:c};
+const nCards=n=>n+' '+plural(n,'карточка','карточки','карточек');
+
+/* ---------- queue logic ---------- */
+function queue(deckId){
+ const out=[];
+ for(const d of S.decks){
+  if(deckId&&d.id!==deckId)continue;
+  let left=Math.max(0,d.newPerDay-d.newToday);
+  for(const c of d.cards){
+   if(!c.due)continue;
+   if(c.status==='new'){if(left>0){out.push({c,d});left--}}
+   else out.push({c,d});
+  }
+ }
+ return out;
+}
+const dueCount=id=>queue(id).length;
+function counts(cards){const r={new:0,learning:0,mastered:0};cards.forEach(c=>r[c.status]++);return r}
+function nextText(){return 'Следующее повторение через 3 ч'}
+
+/* ---------- sessions ---------- */
+function startSession(mode,deckId,extra){
+ let items=queue(deckId);
+ if(extra||!items.length&&mode!=='study'){
+  const pool=[];S.decks.forEach(d=>{if(!deckId||d.id===deckId)d.cards.forEach(c=>{if(c.status!=='new')pool.push({c,d})})});
+  items=pool.sort(()=>Math.random()-.5).slice(0,8);
+ }
+ if(!items.length){toast('Нет карточек для сессии');return}
+ const ids=items.map(x=>x.c.id);
+ sess={mode,deckId,scope:deckId?deckById(deckId).name:'Все колоды',ids,i:0,flip:false,hist:[],answered:0,correct:0,mistakes:[],start:Date.now(),pool:items.map(x=>x.c),extra:!!extra,fb:null,retry:[]};
+ if(mode==='learn')sess.qs=ids.map(id=>({id,type:'choice'}));
+ if(mode==='test')sess.qs=buildTest(items.map(x=>x.c));
+ go('session',{});
+}
+function findCard(id){for(const d of S.decks){const c=d.cards.find(x=>x.id===id);if(c)return {c,d}}return null}
+function allCards(){return S.decks.flatMap(d=>d.cards)}
+function options(c){
+ const pool=sess.pool.concat(allCards()).filter(x=>x.id!==c.id);
+ const seen=new Set([c.t]);const opts=[c];
+ for(const x of pool.sort(()=>Math.random()-.5)){if(opts.length>=4)break;if(!seen.has(x.t)){seen.add(x.t);opts.push(x)}}
+ return opts.sort(()=>Math.random()-.5);
+}
+function mask(c){const re=new RegExp(c.w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i');return re.test(c.ex)?c.ex.replace(re,'_____'):null}
+function buildTest(cards){
+ const types=['choice','typing','tf','context'];
+ return cards.slice(0,8).map((c,i)=>{
+  let t=types[i%4];
+  if(t==='context'&&!mask(c))t='choice';
+  const o={id:c.id,type:t};
+  if(t==='tf'){const other=allCards().filter(x=>x.id!==c.id)[Math.floor(Math.random()*5)]||c;o.truth=Math.random()<.5;o.shown=o.truth?c.t:other.t;if(o.shown===c.t)o.truth=true}
+  return o;
+ });
+}
+function ratingApply(r){
+ const id=sess.ids[sess.i];const f=findCard(id);const c=f.c;
+ const prev={status:c.status,due:c.due,newToday:f.d.newToday};
+ const h={id,prev,ins:null,r,wasNew:c.status==='new'};
+ if(c.status==='new')f.d.newToday++;
+ if(r==='again'){c.due=true;if(c.status==='new')c.status='learning';const at=Math.min(sess.ids.length,sess.i+4);sess.ids.splice(at,0,id);h.ins=at}
+ else{c.due=false;c.status=r==='easy'?'mastered':(c.status==='mastered'?'mastered':'learning')}
+ sess.answered++;if(r!=='again')sess.correct++;else if(!sess.mistakes.includes(id))sess.mistakes.push(id);
+ S.week[6]++;S.total30++;if(r!=='again')S.correct30++;
+ sess.hist.push(h);sess.i++;sess.flip=false;
+ if(sess.i>=sess.ids.length)finish();else render();
+}
+function undo(){
+ const h=sess.hist.pop();if(!h)return;
+ const f=findCard(h.id);Object.assign(f.c,{status:h.prev.status,due:h.prev.due});f.d.newToday=h.prev.newToday;
+ if(h.ins!==null)sess.ids.splice(h.ins,1);
+ sess.i--;sess.answered--;if(h.r!=='again')sess.correct--;
+ S.week[6]--;S.total30--;if(h.r!=='again')S.correct30--;
+ sess.flip=false;render();
+}
+function finish(){
+ sess.ms=Date.now()-sess.start;
+ stack[stack.length-1]={n:'summary',p:{}};render();
+}
+function answerQ(correct,card,given){
+ const f=findCard(card.id);
+ if(sess.mode==='learn'||sess.mode==='test'){
+  sess.answered++;if(correct)sess.correct++;else if(!sess.mistakes.includes(card.id))sess.mistakes.push(card.id);
+  S.week[6]++;S.total30++;if(correct)S.correct30++;
+  if(correct){f.c.status=f.c.status==='new'?'learning':f.c.status;f.c.due=false}
+  sess.fb={correct,given};render();
+ }
+}
+function nextQ(){
+ const cq=sess.qs[sess.i];
+ if(sess.mode==='learn'&&sess.fb&&!sess.fb.correct&&cq.type==='choice'&&!cq.retried){sess.qs.push({id:cq.id,type:'typing',retried:true})}
+ sess.fb=null;sess.i++;
+ if(sess.i>=sess.qs.length)finish();else render();
+}
+
+/* ---------- editor ---------- */
+const blankRow=()=>({w:'',t:'',ex:'',ctx:'',open:false});
+function openEditor(opts){
+ if(opts.deckId){const d=deckById(opts.deckId);ed={deckId:d.id,draftId:null,name:d.name,rows:d.cards.map(c=>({id:c.id,w:c.w,t:c.t,ex:c.ex,ctx:c.ctx,open:!!(c.ex||c.ctx)})),dirty:false}}
+ else if(opts.draftId){const dr=S.drafts.find(x=>x.id===opts.draftId);ed={deckId:null,draftId:dr.id,name:dr.name,rows:dr.rows.map(r=>({...r,open:!!(r.ex||r.ctx)})),dirty:false}}
+ else ed={deckId:null,draftId:null,name:'',rows:[blankRow(),blankRow(),blankRow()],dirty:false};
+ go('editor',{});
+}
+function saveDraft(){
+ if(ed.deckId)return;
+ const has=ed.name.trim()||ed.rows.some(r=>r.w||r.t);
+ if(!has)return;
+ if(!ed.draftId){ed.draftId=nid('dr');S.drafts.unshift({id:ed.draftId,name:'',rows:[]})}
+ const dr=S.drafts.find(x=>x.id===ed.draftId);dr.name=ed.name;dr.rows=ed.rows.map(r=>({w:r.w,t:r.t,ex:r.ex,ctx:r.ctx}));
+}
+function commitEditor(){
+ const rows=ed.rows.filter(r=>r.w.trim()&&r.t.trim());
+ if(!ed.name.trim()){toast('Введи название колоды');return}
+ if(!rows.length){toast('Добавь хотя бы одну карточку со словом и переводом');return}
+ if(ed.deckId){
+  const d=deckById(ed.deckId);d.name=ed.name.trim();
+  const keep=[];
+  rows.forEach(r=>{let c=r.id&&d.cards.find(x=>x.id===r.id);if(c){Object.assign(c,{w:r.w.trim(),t:r.t.trim(),ex:r.ex,ctx:r.ctx})}else c={id:nid('c'),w:r.w.trim(),t:r.t.trim(),ex:r.ex,ctx:r.ctx,status:'new',due:true};keep.push(c)});
+  d.cards.filter(c=>!keep.includes(c)).forEach(c=>S.trash.unshift({id:nid('t'),type:'card',days:0,deckId:d.id,card:c}));
+  d.cards=keep;toast('Колода сохранена');back();return;
+ }
+ const d={id:nid('d'),name:ed.name.trim(),lang:'Английский',newPerDay:5,newToday:0,retention:0.9,direction:'forward',cards:rows.map(r=>({id:nid('c'),w:r.w.trim(),t:r.t.trim(),ex:r.ex,ctx:r.ctx,status:'new',due:true}))};
+ S.decks.unshift(d);
+ if(ed.draftId)S.drafts=S.drafts.filter(x=>x.id!==ed.draftId);
+ root('library');go('deck',{id:d.id});toast('Колода создана');
+}
+function exitEditor(){
+ const changed=ed.deckId?ed.dirty:(ed.name.trim()||ed.rows.some(r=>r.w||r.t));
+ if(!changed){back();return}
+ if(ed.deckId){
+  modal={type:'dlg',title:'Отменить изменения?',text:'Правки в этой колоде не сохранятся.',btns:[['Остаться',()=>{}, 'sec'],['Отменить изменения',()=>{modal=null;back()},'dng']]};render();return;
+ }
+ modal={type:'dlg',title:'Выйти из редактора?',text:'Новую колоду можно оставить черновиком в Библиотеке.',btns:[
+  ['Сохранить черновик',()=>{saveDraft();modal=null;back();toast('Черновик сохранён')},'pri'],
+  ['Удалить',()=>{if(ed.draftId)S.drafts=S.drafts.filter(x=>x.id!==ed.draftId);modal=null;back()},'dng'],
+  ['Остаться',()=>{},'sec']]};render();
+}
+
+/* ---------- import ---------- */
+function parseImport(){
+ const text=imp.text;const lines=text.split(/\r?\n/).filter(l=>l.trim());
+ let sep=imp.sep==='auto'?(text.includes('\t')?'\t':text.includes(';')?';':','):({tab:'\t',comma:',',semi:';'})[imp.sep];
+ const ok=[],bad=[];
+ lines.forEach((l,i)=>{
+  const parts=l.split(sep);const w=(parts[0]||'').trim();let t=parts.slice(1).join(sep).trim();
+  let ex='',ctx='';
+  const m1=t.match(/\s*Ex:\s*(.*?)(?=\s*Контекст:|$)/i);if(m1){ex=m1[1].trim();t=t.replace(m1[0],'')}
+  const m2=t.match(/\s*Контекст:\s*(.*)$/i);if(m2){ctx=m2[1].trim();t=t.replace(m2[0],'')}
+  t=t.trim().replace(/[.]$/,'');
+  if(w&&t)ok.push({w,t,ex,ctx});else bad.push(i+1);
+ });
+ return {ok,bad,sep};
+}
+function doImport(){
+ const {ok}=parseImport();if(!ok.length)return;
+ const cards=ok.map(r=>({id:nid('c'),w:r.w,t:r.t,ex:r.ex,ctx:r.ctx,status:'new',due:true}));
+ let d;
+ if(imp.mode==='new'){d={id:nid('d'),name:(imp.name||'Импортированная колода'),lang:'Английский',newPerDay:5,newToday:0,retention:0.9,direction:'forward',cards};S.decks.unshift(d)}
+ else{d=deckById(imp.target||S.decks[0].id);d.cards.push(...cards)}
+ const n=cards.length;imp={text:'',sep:'auto',mode:'new',name:'',target:''};
+ root('library');go('deck',{id:d.id});toast('Импортировано: '+nCards(n));
+}
+
+/* ---------- screens ---------- */
+const hdr=(l,t,r)=>`<div class="top">${l||''}${t||''}${r||''}</div>`;
+const ib=(a,svg,label,extra='')=>`<button class="ib" data-a="${a}" aria-label="${label}" ${extra}>${svg}</button>`;
+const tabbar=on=>`<nav class="tabbar">${[['today','Сегодня',I.today],['library','Библиотека',I.lib],['stats','Статистика',I.stat]].map(([k,l,s])=>`<button data-a="tab" data-v="${k}" class="${on===k?'on':''}">${s}<span>${l}</span></button>`).join('')}</nav>`;
+function frame(head,body,foot){return head+`<div class="body" id="scroll">${body}</div>`+(foot||'')}
+
+const FLAME='<svg viewBox="0 0 24 24"><path d="M12 2c1 3 4 5 4 9a4 4 0 01-8 0c0-1 .4-2 1-3-2 1-4 3.500-4 7a7 7 0 0014 0c0-6-4-8-7-13z"/></svg>';
+function ring(k){const c={new:['#d9769f',0],learning:['#8a5cc7',.28],mastered:['#4a7fb8',.72]}[k];const r=9,C=2*Math.PI*r;return `<svg viewBox="0 0 26 26"><circle cx="13" cy="13" r="${r}" fill="none" stroke="${c[0]}" stroke-opacity=".35" stroke-width="4"/>${c[1]?`<circle cx="13" cy="13" r="${r}" fill="none" stroke="${c[0]}" stroke-width="4" stroke-dasharray="${C*c[1]} ${C}" transform="rotate(-90 13 13)"/>`:''}</svg>`}
+const TAGN={new:['n','Новая'],learning:['l','В изучении'],mastered:['m','Выучена']};
+const tag=st=>`<span class="tag ${TAGN[st][0]}">${ring(st)}${TAGN[st][1]}</span>`;
+const SPK='<svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4zM15.500 8.500a5 5 0 010 7M18.500 5.500a9 9 0 010 13"/></svg>';
+const STAR='<svg viewBox="0 0 24 24"><path d="M12 3l2.800 5.800 6.200.9-4.500 4.400 1.100 6.200L12 17.400 6.400 20.300l1.100-6.200L3 9.700l6.200-.9z"/></svg>';
+const STARF=STAR.replace('<path','<path fill="currentColor"');
+function sw(type,attrs,inner,cls=''){const l=type==='deck'?'Настройки':type==='card'?'Править':'Открыть';return `<div class="swr ${cls}" data-swipe="${type}" ${attrs}><div class="swbg"><span class="l">Удалить</span><span class="r">${l}</span></div><div class="swfg">${inner}</div></div>`}
+function sToday(){
+ const items=queue(),dc=items.length,nw=items.filter(x=>x.c.status==='new').length;
+ const sk=S.streak+(S.week[6]>0?1:0);
+ let body='';
+ if(!S.decks.length){
+  body=`<div class="empty"><h3>Здесь пока пусто</h3>Создай первую колоду или возьми готовый набор.</div>
+  <button class="btn pri" data-a="newdeck">Создать колоду</button><button class="btn sec" data-a="import">Импортировать</button><button class="btn sec" data-a="starter">Стартовый набор</button>`;
+ }else{
+  if(S.lastBackup>=7)body+=`<button class="banner" data-a="gotodata"><span>⚠️</span><span><b>Копии нет уже ${S.lastBackup} ${plural(S.lastBackup,'день','дня','дней')}</b><span class="note">Скачай копию, чтобы не потерять данные</span></span></button>`;
+  if(dc>0){
+   body+=`<div class="card big"><div>Очередь на сегодня</div><div class="nums"><div><b>${dc-nw}</b><span>к повторению</span></div><div><b>${nw}</b><span>новых</span></div></div>
+   <button class="btn inv" data-a="start" data-m="study">Начать повторение</button>
+   <div class="note" style="color:#fff;opacity:.85;margin:8px 0 6px">Откроются карточки с оценкой. Другие режимы:</div>
+   <div class="row2 ghost"><button class="btn sec" data-a="start" data-m="learn">Заучивание</button><button class="btn sec" data-a="start" data-m="test">Тест</button></div></div>`;
+  }else{
+   body+=`<div class="card big"><b style="font-size:20px">На сегодня всё</b><p style="margin:6px 0 14px;opacity:.9">${nextText()}</p><button class="btn inv" data-a="start" data-m="study" data-x="1">Повторить ещё</button></div>`;
+  }
+  body+=`<div class="h2">Колоды</div><div class="list">${S.decks.map(d=>{const n=dueCount(d.id);return `<button class="li" data-a="deck" data-id="${d.id}"><div class="grow"><div class="t">${esc(d.name)}</div><div class="s">${nCards(d.cards.length)}</div></div>${n?`<span class="pill">${n} к повторению</span>`:'<span class="note">всё сделано</span>'}<span class="chev">›</span></button>`}).join('')}</div>`;
+ }
+ const right=`<button class="streak" data-a="tab" data-v="stats" aria-label="Серия">${FLAME}${sk}</button>`+ib('settings',I.gear,'Настройки');
+ return frame(hdr('',`<h1>Сегодня</h1>`,right),body,tabbar('today'));
+}
+function sSettings(){
+ const body=`<div class="list">
+  <button class="li" data-a="lang"><div class="grow"><div class="t">Язык</div></div><span class="note">Русский</span><span class="chev">›</span></button>
+  <button class="li" data-a="gotodata"><div class="grow"><div class="t">Данные и копии</div></div><span class="chev">›</span></button>
+  <div class="li"><div class="grow"><div class="t">О приложении</div></div><span class="note">Thoth, прототип 0.1</span></div></div>`;
+ return frame(hdr(ib('back',I.back,'Назад'),`<div class="ttl">Настройки</div>`,'<span style="width:44px"></span>'),body);
+}
+function sData(){
+ const lb=S.lastBackup===0?'сегодня':S.lastBackup+' '+plural(S.lastBackup,'день','дня','дней')+' назад';
+ const body=`<div class="card"><div class="note">Последняя копия</div><div style="font-weight:600;font-size:18px">${lb}</div></div>
+ <button class="btn pri" data-a="backup">Скачать копию</button>
+ <button class="btn sec" data-a="restore">Восстановить из файла</button>
+ ${S.restored?`<button class="btn sec" data-a="undorestore">Отменить последнее восстановление</button>`:''}
+ <div class="card"><div class="note">Хранилище</div><div style="font-weight:600">Постоянное хранилище включено</div><div class="note" style="margin-top:4px">Данные живут только на этом устройстве. Копия нужна для переноса и защиты от потери.</div></div>`;
+ return frame(hdr(ib('back',I.back,'Назад'),`<div class="ttl">Данные и копии</div>`,'<span style="width:44px"></span>'),body);
+}
+function sLibrary(){
+ const t=q.lib.trim().toLowerCase();
+ let body=`<input class="input" id="qlib" data-i="qlib" placeholder="Поиск по колодам и карточкам" value="${esc(q.lib)}">`;
+ if(t){
+  const ds=S.decks.filter(d=>d.name.toLowerCase().includes(t));
+  const cs=S.decks.flatMap(d=>d.cards.filter(c=>c.w.toLowerCase().includes(t)||c.t.toLowerCase().includes(t)).map(c=>({c,d})));
+  if(!ds.length&&!cs.length)body+=`<div class="empty">Ничего не нашли по запросу</div>`;
+  if(ds.length)body+=`<div class="h2">Колоды</div><div class="list">${ds.map(deckRow).join('')}</div>`;
+  if(cs.length)body+=`<div class="h2">Карточки</div><div class="list">${cs.map(({c,d})=>`<button class="li" data-a="cardedit" data-d="${d.id}" data-id="${c.id}"><div class="grow"><div class="t">${esc(c.w)}</div><div class="s">${esc(c.t)} · ${esc(d.name)}</div></div></button>`).join('')}</div>`;
+ }else if(!S.decks.length&&!S.drafts.length){
+  body+=`<div class="empty"><h3>Создай первую колоду</h3>Добавь слова вручную или импортируй список.</div><button class="btn pri" data-a="newdeck">Создать колоду</button><button class="btn sec" data-a="import">Импортировать</button><button class="btn sec" data-a="starter">Стартовый набор</button>`;
+ }else{
+  if(S.drafts.length)body+=`<div class="h2">Черновики</div><div class="list">${S.drafts.map(d=>`<button class="li" data-a="draft" data-id="${d.id}"><div class="grow"><div class="t">${esc(d.name||'Без названия')}</div><div class="s">${nCards(d.rows.filter(r=>r.w||r.t).length)} · не завершён</div></div><span class="chev">›</span></button>`).join('')}</div>`;
+  body+=`<div class="h2">Колоды</div><div class="list">${S.decks.map(deckRow).join('')}</div>`;
+ }
+ body+=`<button class="li" style="border:1px solid var(--line);border-radius:14px;background:var(--surface)" data-a="trash"><div class="grow"><div class="t">Недавно удалённые</div></div><span class="note">${S.trash.length}</span><span class="chev">›</span></button>`;
+ return frame(hdr('',`<h1>Библиотека</h1>`,ib('plus',I.plus,'Создать')),body,tabbar('library'));
+}
+function deckRow(d){const n=dueCount(d.id);return sw('deck',`data-id="${d.id}"`,`<button class="li" data-a="deck" data-id="${d.id}"><div class="grow"><div class="t">${esc(d.name)}</div><div class="s">${nCards(d.cards.length)}${n?' · '+n+' к повторению':''}</div></div><span class="chev">›</span></button>`)}
+function sLibrary(){
+ const t=q.lib.trim().toLowerCase();
+ let body=`<input class="input" id="qlib" data-i="qlib" placeholder="Поиск по колодам и карточкам" value="${esc(q.lib)}">`;
+ if(t){
+  const ds=S.decks.filter(d=>d.name.toLowerCase().includes(t));
+  const cs=S.decks.flatMap(d=>d.cards.filter(c=>c.w.toLowerCase().includes(t)||c.t.toLowerCase().includes(t)).map(c=>({c,d})));
+  if(!ds.length&&!cs.length)body+=`<div class="empty">Ничего не нашли по запросу</div>`;
+  if(ds.length)body+=`<div class="h2">Колоды</div><div class="list">${ds.map(deckRow).join('')}</div>`;
+  if(cs.length)body+=`<div class="h2">Карточки</div><div class="list">${cs.map(({c,d})=>sw('card',`data-d="${d.id}" data-id="${c.id}"`,`<button class="li" data-a="cardedit" data-d="${d.id}" data-id="${c.id}"><div class="grow"><div class="t">${esc(c.w)}</div><div class="s">${esc(c.t)} · ${esc(d.name)}</div></div></button>`)).join('')}</div>`;
+ }else if(!S.decks.length&&!S.drafts.length){
+  body+=`<div class="empty"><h3>Создай первую колоду</h3>Добавь слова вручную или импортируй список.</div><button class="btn pri" data-a="newdeck">Создать колоду</button><button class="btn sec" data-a="import">Импортировать</button><button class="btn sec" data-a="starter">Стартовый набор</button>`;
+ }else{
+  if(S.drafts.length)body+=`<div class="h2">Черновики</div><div class="list">${S.drafts.map(d=>sw('draft',`data-id="${d.id}"`,`<button class="li" data-a="draft" data-id="${d.id}"><div class="grow"><div class="t">${esc(d.name||'Без названия')}</div><div class="s">${nCards(d.rows.filter(r=>r.w||r.t).length)} · не завершён</div></div><span class="chev">›</span></button>`)).join('')}</div>`;
+  body+=`<div class="h2">Колоды</div><div class="list">${S.decks.map(deckRow).join('')}</div><div class="note" style="text-align:center">Свайп вправо удаляет колоду, влево открывает настройки</div>`;
+ }
+ body+=`<button class="li" style="border:1px solid var(--line);border-radius:14px;background:var(--surface)" data-a="trash"><div class="grow"><div class="t">Недавно удалённые</div></div><span class="note">${S.trash.length}</span><span class="chev">›</span></button>`;
+ return frame(hdr('',`<h1>Библиотека</h1>`,ib('plus',I.plus,'Создать')),body,tabbar('library'));
+}
+function pct(n,t){return t?Math.round(n/t*100):0}
+function progBar(c,total){
+ const p=k=>total?(c[k]/total*100):0;
+ return `<div class="bar"><i style="width:${p('mastered')}%;background:var(--master)"></i><i style="width:${p('learning')}%;background:var(--learn)"></i><i style="width:${p('new')}%;background:var(--new)"></i></div>`;
+}
+function progRows(c,total){
+ return [['new','n','Новые'],['learning','l','В изучении'],['mastered','m','Выучены']].map(([k,cl,l])=>{const w=38+pct(c[k],total)*0.5;return `<div class="prow"><div class="pillr ${cl}" style="width:${w}%">${ring(k)}${l}</div><b>${c[k]}</b><span class="pc">${pct(c[k],total)}%</span></div>`}).join('');
+}
+function sDeck(){
+ const d=deckById(cur().p.id);if(!d){return frame(hdr(ib('back',I.back,'Назад')),'<div class="empty">Колода не найдена</div>')}
+ const c=counts(d.cards),n=dueCount(d.id),t=q.deck.trim().toLowerCase();
+ const head=hdr(ib('back',I.back,'Назад'),'<span style="flex:1"></span>',ib('editdeck',I.pen,'Редактировать','data-id="'+d.id+'"')+ib('deckmenu',I.dots,'Меню','data-id="'+d.id+'"'));
+ if(!d.cards.length)return frame(head,`<div class="dtitle">${esc(d.name)}</div><div class="empty"><h3>В колоде пока нет карточек</h3>Добавь слова, чтобы начать учить.</div><button class="btn pri" data-a="editdeck" data-id="${d.id}">Добавить карточки</button>`);
+ if(dv.i>=d.cards.length)dv.i=0;
+ const pc=d.cards[dv.i];
+ const dots=Array.from({length:Math.min(5,d.cards.length)},(_,k)=>`<i class="${k===Math.min(dv.i,4)?'on':(k>2?'s':'')}"></i>`).join('');
+ const chips=[['all','Все ('+d.cards.length+')'],['new','Новые'],['learning','В изучении'],['mastered','Выучены'],['fav','Избранные']];
+ let list=d.cards.map((x,i)=>({x,i})).filter(({x})=>(dv.f==='all'||(dv.f==='fav'?x.fav:x.status===dv.f))&&(!t||x.w.toLowerCase().includes(t)||x.t.toLowerCase().includes(t)));
+ const body=`<div><div class="dtitle">${esc(d.name)}</div><div class="note" style="margin-top:4px">${esc(d.lang)} · ${nCards(d.cards.length)}</div></div>
+ <div class="pv" data-swipe="carousel" data-a="pvflip"><div class="ic"><button class="ib" data-a="speak" data-t="${esc(pc.w)}" aria-label="Озвучить">${SPK}</button><button class="ib" data-a="fav" data-d="${d.id}" data-id="${pc.id}" aria-label="В избранное">${pc.fav?STARF:STAR}</button></div><div>${dv.flip?esc(pc.t):esc(pc.w)}${dv.flip&&pc.ex?`<small>${esc(pc.ex)}</small>`:''}</div></div>
+ <div class="dots">${dots}</div><div class="hintline" style="margin:-4px 0 0">Тап переворачивает, свайп листает</div>
+ <div class="pcard"><div class="phd"><b>Прогресс</b><span class="chip-pct">${pct(c.mastered,d.cards.length)}%</span></div>${progRows(c,d.cards.length)}</div>
+ <div class="list"><button class="li" data-a="start" data-m="learn" data-deck="${d.id}"><div class="grow"><div class="t">Заучивание</div><div class="s">Выбор ответа и ввод</div></div><span class="chev">›</span></button>
+ <button class="li" data-a="start" data-m="test" data-deck="${d.id}"><div class="grow"><div class="t">Тест</div><div class="s">Разные типы вопросов</div></div><span class="chev">›</span></button></div>
+ <div style="font-size:20px;font-weight:700;margin-top:6px">Карточки</div>
+ <input class="input" id="qdeck" data-i="qdeck" placeholder="Поиск по словам и переводам" value="${esc(q.deck)}">
+ <div class="chips">${chips.map(([k,l])=>`<button class="${dv.f===k?'on':''}" data-a="chip" data-v="${k}">${l}</button>`).join('')}</div>
+ <div>${list.map(({x,i})=>sw('card',`data-d="${d.id}" data-id="${x.id}"`,`<div data-a="cardedit" data-d="${d.id}" data-id="${x.id}" style="padding:14px;cursor:pointer"><div class="tc"><div class="th"><span class="nn">${i+1}</span>${tag(x.status)}<span class="sp"><button class="ib" style="width:38px;height:38px" data-a="speak" data-t="${esc(x.w)}" aria-label="Озвучить">${SPK}</button><button class="ib" style="width:38px;height:38px" data-a="fav" data-d="${d.id}" data-id="${x.id}" aria-label="В избранное">${x.fav?STARF:STAR}</button></span></div><div class="tw">${esc(x.w)}</div><div class="tt">${esc(x.t)}</div>${x.ex?`<div class="te">${esc(x.ex)}</div>`:''}${x.ctx?`<div class="te">Контекст: ${esc(x.ctx)}</div>`:''}</div></div>`,'tc')).join('')||'<div class="empty">Нет карточек в этом фильтре</div>'}</div>`;
+ const foot=`<div class="foot stk"><button class="btn teal" data-a="start" data-m="study" data-deck="${d.id}" data-x="${n?'':'1'}">${n?'Учить карточки · '+n:'Повторить ещё'}</button></div>`;
+ return frame(head,body,foot);
+}
+function sEditor(){
+ const isNew=!ed.deckId;
+ const rows=ed.rows.map((r,i)=>`<div class="rowc"><div class="erow" style="margin:0"><input class="input" data-i="rw" data-idx="${i}" placeholder="Слово" value="${esc(r.w)}" id="rw${i}"><input class="input" data-i="rt" data-idx="${i}" placeholder="Перевод" value="${esc(r.t)}"><button class="ib" data-a="delrow" data-idx="${i}" aria-label="Удалить строку">${I.trash}</button></div>
+ <button class="ex-t" data-a="togrow" data-idx="${i}" style="text-align:left">${r.open?'Скрыть пример и контекст':'Пример и контекст к слову'}</button>
+ ${r.open?`<input class="input" data-i="rex" data-idx="${i}" placeholder="Пример с этим словом (по-английски)" value="${esc(r.ex)}"><input class="input" data-i="rctx" data-idx="${i}" placeholder="Контекст: заметка про употребление" value="${esc(r.ctx)}">`:''}</div>`).join('');
+ const body=`<input class="input" data-i="edname" placeholder="Название колоды" value="${esc(ed.name)}" id="edname" style="font-weight:600">${rows}<button class="btn sec" data-a="addrow">${'+ Добавить строку'}</button>${isNew?'<div class="note">Новая колода сохраняется как черновик, пока ты не нажал галочку.</div>':''}`;
+ return frame(hdr(ib('exited',I.x,'Закрыть'),`<div class="ttl">${isNew?'Новая колода':'Правка колоды'}</div>`,ib('commited',I.check,'Готово')),body);
+}
+function sImport(){
+ const {ok,bad,sep}=parseImport();
+ const sepName=({'\t':'Таб',',':'Запятая',';':'Точка с запятой'})[sep];
+ let body=`<div><label class="f">Вставь текст: слово, разделитель, перевод. Одна карточка на строку.</label><textarea class="ta" id="imptext" data-i="imptext" placeholder="ubiquitous&#9;повсеместный">${esc(imp.text)}</textarea></div>
+ <div class="row2"><label class="btn sec" style="display:flex;align-items:center;justify-content:center;cursor:pointer;font-weight:500">Выбрать файл<input type="file" id="impfile" accept=".txt,.tsv,.csv,text/*" hidden></label><button class="btn sec" data-a="impsample" style="font-weight:500">Вставить пример</button></div>
+ <div><label class="f">Разделитель</label><select class="sel" data-i="impsep"><option value="auto" ${imp.sep==='auto'?'selected':''}>Определить сам${imp.text?' ('+sepName+')':''}</option><option value="tab" ${imp.sep==='tab'?'selected':''}>Таб</option><option value="comma" ${imp.sep==='comma'?'selected':''}>Запятая</option><option value="semi" ${imp.sep==='semi'?'selected':''}>Точка с запятой</option></select></div>`;
+ if(imp.text){
+  body+=`<div class="card"><div style="font-weight:600">Найдено карточек: ${ok.length}${bad.length?` · пропущено строк: ${bad.length}`:''}</div>${bad.length?`<div class="note" style="color:var(--again)">Нет перевода в строках: ${bad.slice(0,8).join(', ')}</div>`:''}
+  <div style="margin-top:8px">${ok.slice(0,5).map(r=>`<div class="mis"><b>${esc(r.w)}</b><span style="text-align:right">${esc(r.t)}</span></div>`).join('')}${ok.length>5?`<div class="note" style="margin-top:6px">и ещё ${ok.length-5}</div>`:''}</div></div>`;
+ }
+ body+=`<div><label class="f">Куда добавить</label><select class="sel" data-i="impmode"><option value="new" ${imp.mode==='new'?'selected':''}>Новая колода</option>${S.decks.length?`<option value="ex" ${imp.mode==='ex'?'selected':''}>Существующая колода</option>`:''}</select></div>
+ ${imp.mode==='new'?`<input class="input" data-i="impname" placeholder="Название новой колоды" value="${esc(imp.name)}">`:`<select class="sel" data-i="imptarget">${S.decks.map(d=>`<option value="${d.id}" ${imp.target===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}</select>`}`;
+ const foot=`<div class="foot"><button class="btn pri" data-a="doimport" ${ok.length?'':'disabled'}>Импортировать${ok.length?' · '+ok.length:''}</button></div>`;
+ return frame(hdr(ib('back',I.x,'Закрыть'),`<div class="ttl">Импорт</div>`,'<span style="width:44px"></span>'),body,foot);
+}
+function sTrash(){
+ const body=`<div class="note">Хранятся 30 дней, потом удаляются навсегда.</div>`+(S.trash.length?`<div class="list">${S.trash.map(t=>{const left=30-t.days;const nm=t.type==='deck'?t.deck.name:t.card.w;const sub=t.type==='deck'?'Колода · '+nCards(t.deck.cards.length):'Карточка · '+esc(t.card.t);return `<div class="li"><div class="grow"><div class="t">${esc(nm)}</div><div class="s">${sub}</div><div class="s" style="${left<3?'color:var(--again)':''}">Осталось ${left} ${plural(left,'день','дня','дней')}</div></div><button class="btn sec" style="width:auto;min-height:36px;padding:0 10px;font-weight:500" data-a="restoreitem" data-id="${t.id}">Восстановить</button><button class="ib" data-a="killitem" data-id="${t.id}" aria-label="Удалить навсегда">${I.trash}</button></div>`}).join('')}</div><button class="btn sec" data-a="cleartrash">Очистить</button>`:`<div class="empty">Здесь пусто</div>`);
+ return frame(hdr(ib('back',I.back,'Назад'),`<div class="ttl">Недавно удалённые</div>`,'<span style="width:44px"></span>'),body);
+}
+function sStats(){
+ const days=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];const mx=Math.max(...S.week,1);
+ const all=counts(allCards());const tot=allCards().length;
+ const acc=S.total30?Math.round(S.correct30/S.total30*100):0;
+ const mins=S.minutes30+Math.round(S.week[6]*0.1);
+ const body=`<div class="h2">Активность</div>
+ <div class="card"><div class="h2" style="margin:0">Эта неделя</div><div class="chart">${S.week.map((v,i)=>`<div class="${i===6?'today':''}"><span>${v}</span><i style="height:${Math.max(3,v/mx*80)}px"></i><span>${days[i]}</span></div>`).join('')}</div></div>
+ <div class="grid2"><div class="kpi"><b>${S.streak+(S.week[6]>0?1:0)}</b><span>дней подряд</span></div><div class="kpi"><b>${S.total30}</b><span>повторено за 30 дней</span></div><div class="kpi"><b>${acc}%</b><span>верных ответов</span></div><div class="kpi"><b>${Math.floor(mins/60)} ч ${mins%60} мин</b><span>времени за 30 дней</span></div></div>
+ <div class="h2">Прогресс</div><div class="pcard"><div class="phd"><b>Всего знаю</b><span class="chip-pct">${pct(all.mastered,tot)}%</span></div>${progBar(all,tot)}<div style="height:12px"></div>${progRows(all,tot)}<div class="note">${nCards(tot)} во всех колодах</div></div>
+ <div class="h2">Колоды</div>${S.decks.map(d=>{const c=counts(d.cards);const n=d.cards.length;return `<button class="pcard stat-deck" data-a="deck" data-id="${d.id}"><div class="phd"><b>${esc(d.name)}</b><span class="chip-pct">${pct(c.mastered,n)}%</span></div>${progBar(c,n)}<div style="height:12px"></div>${progRows(c,n)}</button>`}).join('')}
+`;
+ return frame(hdr('',`<h1>Статистика</h1>`,''),body,tabbar('stats'));
+}
+function sessHead(){
+ const total=sess.mode==='study'?sess.ids.length:sess.qs.length;
+ return `<div class="top">${ib('exits',I.x,'Закрыть')}<div class="ttl">${Math.min(sess.i+1,total)} / ${total}</div>${sess.mode==='study'?ib('undo',I.undo,'Отменить ответ',sess.hist.length?'':'disabled'):'<span style="width:44px"></span>'}</div><div class="prog"><i style="width:${sess.i/total*100}%"></i></div>`;
+}
+function sSession(){
+ if(!sess)return frame(hdr(ib('back',I.back,'Назад')),'<div class="empty">Сессия не начата</div>');
+ if(sess.mode==='study'){
+  const c=findCard(sess.ids[sess.i]).c;
+  const body=`<div class="fc"><div class="fcard" data-a="flip" data-swipe="fcard">${sess.flip?`<div class="tr">${esc(c.t)}</div>${c.ex?`<div class="ex">${esc(c.ex)}</div>`:''}${c.ctx?`<div class="hint">${esc(c.ctx)}</div>`:''}`:`<div class="w">${esc(c.w)}</div><div class="hint">Нажми, чтобы перевернуть</div>`}</div></div>`;
+  const foot=sess.flip?`<div class="foot"><div class="hintline">Свайп вправо: хорошо, влево: снова</div><div class="rate"><button style="background:var(--again)" data-a="rate" data-r="again">Снова</button><button style="background:var(--hard)" data-a="rate" data-r="hard">Трудно</button><button style="background:var(--good)" data-a="rate" data-r="good">Хорошо</button><button style="background:var(--easy)" data-a="rate" data-r="easy">Легко</button></div></div>`:`<div class="foot"><button class="btn pri" data-a="flip">Показать ответ</button></div>`;
+  return sessHead()+`<div class="body" style="padding:0">${body}</div>`+foot;
+ }
+ const cq=sess.qs[sess.i];const c=findCard(cq.id).c;const fb=sess.fb;
+ let body='',foot='';
+ const nextBtn=`<div class="foot"><button class="btn pri" data-a="nextq">Дальше</button></div>`;
+ if(cq.type==='choice'){
+  if(!cq.opts)cq.opts=options(c).map(o=>o.id);
+  body=`<div class="qs">${sess.mode==='learn'?'Выбери перевод':'Вопрос с выбором'}</div><div class="q">${esc(c.w)}</div>`+cq.opts.map(id=>{const o=findCard(id)?.c||allCards().find(x=>x.id===id);let cls='';if(fb){if(o.id===c.id)cls='ok';else if(fb.given===o.id)cls='bad'}return `<button class="opt ${cls}" data-a="pick" data-id="${o.id}" ${fb?'disabled':''}>${esc(o.t)}</button>`}).join('');
+ }else if(cq.type==='typing'){
+  body=`<div class="qs">Впиши слово по-английски</div><div class="q">${esc(c.t)}</div><input class="input" id="typed" autocomplete="off" autocapitalize="off" placeholder="Слово" ${fb?'disabled':''} value="${esc(fb?fb.given:'')}">`+(fb?'':`<button class="btn pri" data-a="check" style="margin-top:8px">Проверить</button>`);
+ }else if(cq.type==='tf'){
+  body=`<div class="qs">Верно или неверно</div><div class="q">${esc(c.w)}</div><div class="card" style="font-size:20px">${esc(cq.shown)}</div>`+(fb?'':`<div class="row2" style="margin-top:8px"><button class="btn sec" data-a="tf" data-v="1">Верно</button><button class="btn sec" data-a="tf" data-v="0">Неверно</button></div>`);
+ }else{
+  body=`<div class="qs">Вставь пропущенное слово</div><div class="q" style="font-size:20px;font-weight:500">${esc(mask(c))}</div><div class="note">Подсказка: ${esc(c.t)}</div><input class="input" id="typed" autocomplete="off" autocapitalize="off" placeholder="Слово" ${fb?'disabled':''} style="margin-top:10px" value="${esc(fb?fb.given:'')}">`+(fb?'':`<button class="btn pri" data-a="check" style="margin-top:8px">Проверить</button>`);
+ }
+ if(fb){const ans=(cq.type==='choice'||cq.type==='tf')?c.t:c.w;body+=`<div class="fb ${fb.correct?'ok':'bad'}">${fb.correct?'Верно':'Неверно. Правильно: <b>'+esc(ans)+'</b>'}</div>`;foot=nextBtn}
+ return sessHead()+`<div class="body">${body}</div>`+foot;
+}
+function sSummary(){
+ const pct=sess.answered?Math.round(sess.correct/sess.answered*100):0;
+ const s=Math.round(sess.ms/1000),mm=String(Math.floor(s/60)).padStart(2,'0'),ss=String(s%60).padStart(2,'0');
+ const mis=sess.mistakes.map(id=>findCard(id)?.c).filter(Boolean);
+ const body=`<div style="text-align:center;padding:10px 0"><div class="big-pct">${pct}%</div><div class="note">верных ответов · ${esc(sess.scope)}</div></div>
+ <div class="grid2"><div class="kpi"><b>${sess.answered}</b><span>ответов</span></div><div class="kpi"><b>${mm}:${ss}</b><span>время</span></div></div>
+ ${mis.length?`<div class="card"><div class="h2" style="margin:0 0 6px">Ошибки · ${mis.length}</div>${mis.map(c=>`<div class="mis"><b>${esc(c.w)}</b><span>${esc(c.t)}</span></div>`).join('')}</div>`:`<div class="card" style="text-align:center">Без ошибок</div>`}`;
+ const foot=`<div class="foot" style="display:flex;flex-direction:column;gap:8px"><button class="btn pri" data-a="more">Ещё</button><div class="row2"><button class="btn sec" data-a="summtest">Тест</button><button class="btn sec" data-a="summdone">Готово</button></div></div>`;
+ return frame(hdr('',`<div class="ttl">Итог</div>`,''),body,foot);
+}
+const SCREENS={today:sToday,settings:sSettings,data:sData,library:sLibrary,deck:sDeck,editor:sEditor,import:sImport,trash:sTrash,stats:sStats,session:sSession,summary:sSummary};
+
+/* ---------- render ---------- */
+function render(){
+ const app=$('#app');const scrollY=$('#scroll')?.scrollTop||0;
+ let html=SCREENS[cur().n]();
+ if(modal){
+  const m=modal;
+  if(m.type==='dlg')html+=`<div class="scrim mid" data-a="scrimclose"><div class="dlg" data-stop><h3>${esc(m.title)}</h3><p>${esc(m.text)}</p>${m.btns.map((b,i)=>`<button class="btn ${b[2]||'sec'}" data-m="${i}">${esc(b[0])}</button>`).join('')}</div></div>`;
+  else html+=`<div class="scrim" data-a="scrimclose"><div class="sheet" data-stop><div class="grab"></div>${m.html}</div></div>`;
+ }
+ if(toastMsg)html+=`<div class="toast">${esc(toastMsg)}</div>`;
+ app.innerHTML=html;
+ const sc=$('#scroll');if(sc)sc.scrollTop=scrollY;
+ if(focusId){const el=document.getElementById(focusId);if(el){el.focus();try{el.setSelectionRange(el.value.length,el.value.length)}catch(e){}}focusId=null}
+ renderSide();
+}
+function closeModal(){modal=null;render()}
+function sheet(html,fns,state){modal={type:'sheet',html,fns:fns||[],state:state||{}};render()}
+
+/* ---------- sheets ---------- */
+function createMenu(){
+ sheet(`<h3>Создать</h3><div class="list"><button class="li" data-m="0"><div class="grow"><div class="t">Новая колода</div><div class="s">Ввести слова вручную</div></div></button><button class="li" data-m="1"><div class="grow"><div class="t">Импорт</div><div class="s">Вставить текст или выбрать файл</div></div></button></div>`,
+ [()=>{modal=null;openEditor({})},()=>{modal=null;go('import')}]);
+}
+function askDeleteDeck(id){modal={type:'dlg',title:'Удалить колоду?',text:'Колода уйдёт в «Недавно удалённые» на 30 дней.',btns:[['Отмена',()=>{},'sec'],['Удалить',()=>{const d=deckById(id);S.decks=S.decks.filter(x=>x!==d);S.trash.unshift({id:nid('t'),type:'deck',days:0,deck:d});modal=null;stack=[{n:'library',p:{}}];fwd=[];toast('Колода удалена');render()},'dng']]};render()}
+function delCard(did,cid){const d=deckById(did),c=d.cards.find(x=>x.id===cid);d.cards=d.cards.filter(x=>x!==c);S.trash.unshift({id:nid('t'),type:'card',days:0,deckId:did,card:c});toast('Карточка удалена, её можно вернуть в корзине')}
+function deckMenu(id){
+ sheet(`<h3>Колода</h3><div class="list"><button class="li" data-m="0"><div class="t">Настройки колоды</div></button><button class="li" data-m="1"><div class="t">Дублировать</div></button><button class="li" data-m="2"><div class="t">Сбросить прогресс</div></button><button class="li" data-m="3"><div class="t">Экспорт колоды</div></button><button class="li" data-m="4"><div class="t" style="color:var(--again)">Удалить</div></button></div>`,
+ [()=>deckSettings(id),()=>{const d=deckById(id);const cp=JSON.parse(JSON.stringify(d));cp.id=nid('d');cp.name=d.name+' (копия)';cp.cards.forEach(c=>c.id=nid('c'));S.decks.splice(S.decks.indexOf(d)+1,0,cp);modal=null;toast('Колода продублирована');render()},
+  ()=>{modal={type:'dlg',title:'Сбросить прогресс?',text:'Все карточки колоды станут новыми. Оценки сотрутся.',btns:[['Отмена',()=>{},'sec'],['Сбросить',()=>{deckById(id).cards.forEach(c=>{c.status='new';c.due=true});modal=null;toast('Прогресс сброшен');render()},'dng']]};render()},
+  ()=>{const d=deckById(id);try{const tsv=d.cards.map(c=>c.w+'\t'+c.t+(c.ex?' Ex: '+c.ex:'')+(c.ctx?' Контекст: '+c.ctx:'')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([tsv],{type:'text/tab-separated-values'}));a.download=d.name+'.tsv';a.click()}catch(e){}modal=null;toast('Колода экспортирована в TSV');render()},
+  ()=>askDeleteDeck(id)]);
+}
+function deckSettings(id){
+ const d=deckById(id);
+ sheet(`<h3>Настройки колоды</h3>
+ <div><label class="f">Название</label><input class="input" data-s="name" value="${esc(d.name)}"></div>
+ <div><label class="f">Язык</label><select class="sel" data-s="lang">${['Английский','Немецкий','Турецкий','Другой'].map(l=>`<option ${d.lang===l?'selected':''}>${l}</option>`).join('')}</select></div>
+ <div><label class="f">Цель удержания</label><select class="sel" data-s="retention">${[[0.85,'85%, меньше повторений'],[0.9,'90%, обычный режим'],[0.95,'95%, больше повторений']].map(([v,l])=>`<option value="${v}" ${d.retention===v?'selected':''}>${l}</option>`).join('')}</select></div>
+ <div><label class="f">Новых карточек в день</label><input class="input" type="number" min="0" max="50" data-s="newPerDay" value="${d.newPerDay}"></div>
+ <div><label class="f">Направление</label><select class="sel" data-s="direction"><option value="forward" ${d.direction==='forward'?'selected':''}>Слово → перевод</option><option value="backward" ${d.direction==='backward'?'selected':''}>Перевод → слово</option><option value="mixed" ${d.direction==='mixed'?'selected':''}>Смешанное</option></select></div>
+ <button class="btn pri" data-m="0">Сохранить</button>`,
+ [()=>{const s=modal.state;if(s.name)d.name=s.name;if(s.lang)d.lang=s.lang;if(s.retention)d.retention=+s.retention;if(s.newPerDay!==undefined)d.newPerDay=Math.max(0,+s.newPerDay||0);if(s.direction)d.direction=s.direction;modal=null;toast('Настройки сохранены');render()}],{});
+}
+function cardEdit(did,cid){
+ const d=deckById(did),c=d.cards.find(x=>x.id===cid);
+ sheet(`<h3>Правка карточки</h3>
+ <div><label class="f">Слово</label><input class="input" data-s="w" value="${esc(c.w)}"></div>
+ <div><label class="f">Перевод</label><input class="input" data-s="t" value="${esc(c.t)}"></div>
+ <div><label class="f">Пример с этим словом</label><input class="input" data-s="ex" value="${esc(c.ex)}"></div>
+ <div><label class="f">Контекст (заметка)</label><input class="input" data-s="ctx" value="${esc(c.ctx)}"></div>
+ <button class="btn pri" data-m="0">Сохранить</button><button class="btn sec" data-m="1" style="color:var(--again)">Удалить карточку</button>`,
+ [()=>{const s=modal.state;['w','t','ex','ctx'].forEach(k=>{if(s[k]!==undefined)c[k]=s[k]});modal=null;toast('Карточка сохранена');render()},
+  ()=>{d.cards=d.cards.filter(x=>x!==c);S.trash.unshift({id:nid('t'),type:'card',days:0,deckId:did,card:c});modal=null;toast('Карточка удалена');render()}],{});
+}
+
+/* ---------- actions ---------- */
+const A={
+ tab:e=>root(e.dataset.v),
+ settings:()=>go('settings'),
+ gotodata:()=>go('data'),
+ lang:()=>sheet(`<h3>Язык</h3><div class="list"><button class="li" data-m="0"><div class="t">Русский</div></button><button class="li" data-m="1"><div class="t">English</div></button></div>`,[()=>closeModal(),()=>{modal=null;toast('В прототипе доступен только русский');render()}]),
+ backup:()=>{S.lastBackup=0;try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S.decks,null,1)],{type:'application/json'}));a.download='thoth-backup.json';a.click()}catch(e){}toast('Копия скачана');},
+ restore:()=>{modal={type:'dlg',title:'Восстановить из файла',text:'Перед восстановлением приложение сохранит снимок текущих данных, чтобы можно было отменить.',btns:[['Объединить с текущими',()=>{S.restored=true;modal=null;toast('Данные объединены');render()},'pri'],['Заменить текущие',()=>{S.restored=true;modal=null;toast('Данные заменены');render()},'dng'],['Отмена',()=>{},'sec']]};render()},
+ undorestore:()=>{S.restored=false;toast('Восстановление отменено, данные возвращены')},
+ back:()=>back(),
+ plus:()=>createMenu(),
+ newdeck:()=>openEditor({}),
+ import:()=>go('import'),
+ starter:()=>{const d={id:nid('d'),name:'Стартовый набор',lang:'Английский',newPerDay:5,newToday:0,retention:0.9,direction:'forward',cards:mk(W.slice(0,8),[])};S.decks.unshift(d);root('library');go('deck',{id:d.id});toast('Стартовый набор добавлен')},
+ deck:e=>{q.deck='';dv={i:0,flip:false,f:'all'};go('deck',{id:e.dataset.id})},
+ pvflip:()=>{dv.flip=!dv.flip;render()},
+ chip:e=>{dv.f=e.dataset.v;render()},
+ fav:e=>{const c=deckById(e.dataset.d).cards.find(x=>x.id===e.dataset.id);c.fav=!c.fav;render()},
+ speak:e=>{try{const u=new SpeechSynthesisUtterance(e.dataset.t);u.lang='en-US';speechSynthesis.cancel();speechSynthesis.speak(u)}catch(x){toast('Озвучка недоступна в этом браузере')}},
+ editdeck:e=>openEditor({deckId:e.dataset.id}),
+ deckmenu:e=>deckMenu(e.dataset.id),
+ draft:e=>openEditor({draftId:e.dataset.id}),
+ trash:()=>go('trash'),
+ cardedit:e=>cardEdit(e.dataset.d,e.dataset.id),
+ start:e=>startSession(e.dataset.m,e.dataset.deck||null,e.dataset.x==='1'),
+ flip:()=>{sess.flip=!sess.flip;render()},
+ rate:e=>ratingApply(e.dataset.r),
+ undo:()=>undo(),
+ exits:()=>{stack.pop();render()},
+ pick:e=>{const cq=sess.qs[sess.i];const c=findCard(cq.id).c;answerQ(e.dataset.id===c.id,c,e.dataset.id)},
+ check:()=>{const cq=sess.qs[sess.i];const c=findCard(cq.id).c;const v=$('#typed').value.trim();answerQ(v.toLowerCase()===c.w.toLowerCase(),c,v)},
+ tf:e=>{const cq=sess.qs[sess.i];const c=findCard(cq.id).c;answerQ((e.dataset.v==='1')===cq.truth,c,'')},
+ nextq:()=>nextQ(),
+ more:()=>{const m=sess.mode,d=sess.deckId;stack.pop();startSession(m,d,true)},
+ summtest:()=>{const d=sess.deckId;stack.pop();startSession('test',d,true)},
+ summdone:()=>{stack.pop();render()},
+ exited:()=>exitEditor(),
+ commited:()=>commitEditor(),
+ addrow:()=>{ed.rows.push(blankRow());ed.dirty=true;saveDraft();focusId='rw'+(ed.rows.length-1);render()},
+ delrow:e=>{ed.rows.splice(+e.dataset.idx,1);if(!ed.rows.length)ed.rows.push(blankRow());ed.dirty=true;saveDraft();render()},
+ togrow:e=>{const r=ed.rows[+e.dataset.idx];r.open=!r.open;render()},
+ impsample:()=>{imp.text='ubiquitous\tповсеместный. Ex: Phones are ubiquitous.\nephemeral\tнедолговечный\nmeticulous\tдотошный. Контекст: о людях\nplaceholder\nresilient\tстойкий';render()},
+ doimport:()=>doImport(),
+ restoreitem:e=>{const t=S.trash.find(x=>x.id===e.dataset.id);
+  if(t.type==='deck'){S.decks.unshift(t.deck);}else{const d=deckById(t.deckId);if(!d){toast('Сначала восстанови колоду этой карточки');return}d.cards.push(t.card)}
+  S.trash=S.trash.filter(x=>x!==t);toast('Восстановлено')},
+ killitem:e=>{const t=S.trash.find(x=>x.id===e.dataset.id);modal={type:'dlg',title:'Удалить навсегда?',text:'Это действие нельзя отменить.',btns:[['Отмена',()=>{},'sec'],['Удалить навсегда',()=>{S.trash=S.trash.filter(x=>x!==t);modal=null;render()},'dng']]};render()},
+ cleartrash:()=>{modal={type:'dlg',title:'Очистить «Недавно удалённые»?',text:'Всё, что здесь лежит, удалится навсегда.',btns:[['Отмена',()=>{},'sec'],['Очистить',()=>{S.trash=[];modal=null;render()},'dng']]};render()},
+ scrimclose:()=>closeModal(),
+ mapopen:()=>{sheet('<h3>Карта экранов</h3>'+mapHtml(true),window.__mapfns=[],{});modal.fns=MAPFNS()}
+};
+document.addEventListener('click',e=>{
+ const stop=e.target.closest('[data-stop]');
+ const m=e.target.closest('[data-m]');
+ if(m&&modal&&!m.dataset.a){const i=+m.dataset.m;if(modal.type==='dlg'){const f=modal.btns[i][1];const before=modal;f();if(modal===before)closeModal()}else{modal.fns[i]&&modal.fns[i]()}return}
+ const el=e.target.closest('[data-a]');
+ if(!el)return;
+ if(el.dataset.a==='scrimclose'&&stop)return;
+ if(el.dataset.a==='scrimclose'&&e.target.closest('[data-stop]'))return;
+ if(el.dataset.a==='jump'){jump(el.dataset.v);return}
+ const f=A[el.dataset.a];if(f)f(el);
+});
+document.addEventListener('input',e=>{
+ const t=e.target,k=t.dataset.i,s=t.dataset.s;
+ if(s&&modal){modal.state[s]=t.value;return}
+ if(!k)return;
+ const idx=+t.dataset.idx;
+ if(k==='qlib'){q.lib=t.value;focusId='qlib';render()}
+ else if(k==='qdeck'){q.deck=t.value;focusId='qdeck';render()}
+ else if(k==='edname'){ed.name=t.value;ed.dirty=true;saveDraft()}
+ else if(['rw','rt','rex','rctx'].includes(k)){const key={rw:'w',rt:'t',rex:'ex',rctx:'ctx'}[k];ed.rows[idx][key]=t.value;ed.dirty=true;saveDraft()}
+ else if(k==='imptext'){imp.text=t.value;focusId='imptext';render()}
+ else if(k==='impname'){imp.name=t.value}
+});
+document.addEventListener('change',e=>{
+ const t=e.target,k=t.dataset.i;
+ if(t.id==='impfile'){const f=t.files[0];if(f){f.text().then(x=>{imp.text=x;render()})}return}
+ if(k==='impsep'){imp.sep=t.value;render()}
+ else if(k==='impmode'){imp.mode=t.value;render()}
+ else if(k==='imptarget'){imp.target=t.value}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='typed'){A.check()}});
+
+
+/* ---------- swipes ---------- */
+let swp=null, suppressUntil=0, suppressEl=null;
+document.addEventListener('click',e=>{if(Date.now()<suppressUntil&&(!suppressEl||suppressEl.contains(e.target))){e.stopPropagation();e.preventDefault()}},true);
+document.addEventListener('pointerdown',e=>{
+ if(modal||e.target.closest('input,textarea,select'))return;
+ swp={x:e.clientX,y:e.clientY,dx:0,drag:false,row:e.target.closest('[data-swipe]')};
+});
+document.addEventListener('pointermove',e=>{
+ if(!swp)return;
+ const dx=e.clientX-swp.x,dy=e.clientY-swp.y;
+ if(!swp.drag&&Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.5){swp.drag=true;if(swp.row)swp.row.classList.add('drag')}
+ if(!swp.drag)return;
+ swp.dx=dx;
+ const r=swp.row;if(!r)return;
+ const t=r.dataset.swipe;
+ if(t==='carousel'||t==='fcard'){r.style.transform=`translateX(${dx*0.4}px) rotate(${dx/50}deg)`}
+ else{const fg=r.querySelector('.swfg');fg.style.transform=`translateX(${Math.max(-130,Math.min(130,dx))}px)`;r.dataset.dir=dx>0?'r':'l'}
+});
+function swipeEnd(cancel){
+ const s=swp;swp=null;if(!s||!s.drag)return;
+ suppressUntil=Date.now()+250;suppressEl=s.row;
+ const dx=s.dx,TH=80,r=s.row;
+ if(r){
+  r.classList.remove('drag');
+  const t=r.dataset.swipe;
+  if(t==='carousel'||t==='fcard')r.style.transform='';else{const fg=r.querySelector('.swfg');fg.style.transform=''}
+  if(cancel)return;
+  const id=r.dataset.id,did=r.dataset.d;
+  if(t==='deck'){if(dx>TH)askDeleteDeck(id);else if(dx<-TH)deckSettings(id)}
+  else if(t==='card'){if(dx>TH){delCard(did,id)}else if(dx<-TH)cardEdit(did,id)}
+  else if(t==='draft'){if(dx>TH){S.drafts=S.drafts.filter(x=>x.id!==id);toast('Черновик удалён')}else if(dx<-TH)openEditor({draftId:id})}
+  else if(t==='carousel'){const d=deckById(cur().p.id);if(dx<-TH){dv.i=(dv.i+1)%d.cards.length;dv.flip=false;render()}else if(dx>TH){dv.i=(dv.i-1+d.cards.length)%d.cards.length;dv.flip=false;render()}}
+  else if(t==='fcard'){if(sess.flip){if(dx>TH)ratingApply('good');else if(dx<-TH)ratingApply('again')}}
+  return;
+ }
+ if(cancel)return;
+ const n=cur().n;
+ if(['session','summary','editor'].includes(n))return;
+ if(dx>TH*1.3){if(stack.length>1)back()}
+ else if(dx<-TH*1.3){if(fwd.length){stack.push(fwd.pop());render()}}
+}
+document.addEventListener('pointerup',()=>swipeEnd(false));
+document.addEventListener('pointercancel',()=>swipeEnd(true));
+
+/* ---------- screen map panel ---------- */
+const MAP=[['Сегодня',[['1','Сегодня','today'],['2','Настройки','settings'],['3','Данные и копии','data']]],['Библиотека',[['4','Библиотека','library'],['5','Колода','deck'],['6','Редактор колоды','editor'],['7','Импорт','import'],['8','Недавно удалённые','trash']]],['Статистика',[['9','Статистика','stats']]],['Сессии',[['10','Карточки','study'],['11','Заучивание','learn'],['12','Тест','test'],['13','Итог','summary']]]];
+function mapHtml(inSheet){
+ return MAP.map(([g,items])=>`<div class="grp">${g}</div>${items.map(([n,l,k])=>`<button class="j" data-a="jump" data-v="${k}"><i>${n}</i>${l}</button>`).join('')}`).join('')+`<button class="reset" data-a="jump" data-v="reset">Сбросить данные прототипа</button>`;
+}
+function MAPFNS(){return []}
+function renderSide(){const s=$('#side');if(s&&!s.dataset.done){s.innerHTML=`<h2>Карта экранов</h2><p>Нажми на экран, чтобы открыть его. Нижняя панель видна только на экранах 1, 4 и 9.</p>`+mapHtml();s.dataset.done=1}}
+function jump(v){
+ modal=null;toastMsg='';
+ if(v==='reset'){S=initial();q={lib:'',deck:''};sess=null;root('today');return}
+ if(v==='today'){root('today')}
+ else if(v==='settings'){root('today');go('settings')}
+ else if(v==='data'){root('today');go('settings');go('data')}
+ else if(v==='library'){root('library')}
+ else if(v==='deck'){root('library');dv={i:0,flip:false,f:'all'};go('deck',{id:S.decks[0].id})}
+ else if(v==='editor'){root('library');openEditor({})}
+ else if(v==='import'){root('library');go('import')}
+ else if(v==='trash'){root('library');go('trash')}
+ else if(v==='stats'){root('stats')}
+ else if(v==='study'||v==='learn'||v==='test'){root('today');startSession(v,null,false)}
+ else if(v==='summary'){root('today');startSession('study',null,false);if(sess){sess.answered=8;sess.correct=6;sess.mistakes=sess.ids.slice(0,2);sess.ms=252000;stack[stack.length-1]={n:'summary',p:{}};render()}}
+}
+render();
+</script>
+</body>
+</html>
